@@ -8,6 +8,20 @@ jobs:
   run-sensor:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - run: python3 sensor.py || truename: Sensor CI Pipeline
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  run-sensor:
+    runs-on: ubuntu-latest
+    steps:
       - name: Checkout repository
         uses: actions/checkout@v3
       - name: Setup Python
