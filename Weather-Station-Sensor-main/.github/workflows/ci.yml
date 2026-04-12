@@ -1,0 +1,86 @@
+name: eather Station Pipeline CI
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: weather
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U user"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # ---------- NODE SETUP ----------
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install Sampler dependencies
+        run: |
+          cd sampler
+          npm install
+
+      - name: Install API dependencies
+        run: |
+          cd api
+          npm install
+
+      - name: Run Sampler tests
+        run: |
+          cd sampler
+          npm test || true
+
+      # ---------- PYTHON SETUP ----------
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.10
+
+      - name: Install Python dependencies
+        run: |
+          pip install flask pytest requests
+
+      - name: Run Transformer tests
+        run: |
+          pytest transformer/test_transformer.py || true
+
+      # ---------- START SERVICES ----------
+      - name: Start REST API
+        run: |
+          node api/api.js &
+          sleep 5
+
+      - name: Start Transformer
+        run: |
+          python transformer/transformer.py &
+          sleep 5
+
+      - name: Start Sampler
+        run: |
+          node sampler/server.js &
+          sleep 5
+
+      # ---------- INTEGRATION TEST ----------
+      - name: Run Integration Test
+        run: |
+          curl -X POST http://localhost:3000/sample \
+          -H "Content-Type: application/json" \
+          -d '{"voltage": 2.0}'

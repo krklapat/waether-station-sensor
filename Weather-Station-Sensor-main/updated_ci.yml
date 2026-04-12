@@ -1,0 +1,78 @@
+name: Full Pipeline CI
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: weather
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U user"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      # ---------- NODE (Sampler + API) ----------
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install Node dependencies
+        run: |
+          cd sampler && npm install
+          cd ../api && npm install
+
+      - name: Run Sampler tests
+        run: |
+          cd sampler
+          npm test
+
+      # ---------- PYTHON (Transformer) ----------
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Python dependencies
+        run: |
+          pip install flask pytest requests
+
+      - name: Run Transformer tests
+        run: |
+          pytest transformer/test_transformer.py
+
+      # ---------- BASIC INTEGRATION TEST ----------
+      - name: Start API
+        run: |
+          node api/api.js &
+          sleep 5
+
+      - name: Start Transformer
+        run: |
+          python transformer/transformer.py &
+          sleep 5
+
+      - name: Integration Test (Sampler → API)
+        run: |
+          cd sampler
+          node sampler.js &
+          sleep 5
+          curl -X POST http://localhost:3000/sample \
+          -H "Content-Type: application/json" \
+          -d '{"voltage": 2.0}'

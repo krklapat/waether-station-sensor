@@ -1,0 +1,19 @@
+{
+  "name": "weather-sampler",
+  "version": "1.0.0",
+  "description": "Sampler component for weather station pipeline",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "jest"
+  },
+  "dependencies": {
+    "axios": "^1.15.0",
+    "axois": "^0.0.1-security",
+    "express": "^4.22.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^6.3.3"
+  }
+}
